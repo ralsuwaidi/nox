@@ -1,3 +1,6 @@
+
+from ..constants import GUIDANCE_SCALE_DEFAULT, NUM_INFERENCE_STEPS_DEFAULT
+
 def improve_prompt(prompt, level="high"):
 
     detail_levels = {
@@ -22,34 +25,40 @@ ALL_OPTIONS = {
 
 class Options:
 
-    def options(self, options):
+    def parse_options(self):
 
-        # choose the right model
-        self.get_model(options)
+        if "n" in self.options:
+            self.repeat = int(self.options["n"])
 
-        if "n" in options:
-            self.repeat = int(options["n"])
+        if "gs" in self.options:
+            self.guidance_scale = int(self.options["gs"])
+        else:
+            self.guidance_scale = GUIDANCE_SCALE_DEFAULT
+        
+        
+        if "steps" in self.options:
+            self.num_inference_steps = int(self.options["steps"])
+        else:
+            self.num_inference_steps = NUM_INFERENCE_STEPS_DEFAULT
 
-        if "gs" in options:
-            self.guidance_scale = int(options["gs"])
+        if "custom" in self.options:
+            self.model_id = self.options["custom"]
+            self.add_response("custom model chosen: " + self.model_id)
 
-        if "steps" in options:
-            self.num_inference_steps = int(options["steps"])
-
-        if "custom" in options:
-            self.model_id = options["custom"]
-
-        if "detailed" in options:
-
-            if options["detailed"] == "all":
+        if "detailed" in self.options:
+            if self.options["detailed"] == "all":
                 self.all_details = True
             else:
-                self.prompt = improve_prompt(self.prompt, options["detailed"])
+                self.prompt = improve_prompt(self.prompt, self.options["detailed"])
+            self.add_response("custom details: True")
 
-    def update_response(self):
-        self.response += "\nguidance scale:" + str(self.guidance_scale)
-        self.response += "\ninference steps:" + str(self.num_inference_steps)
-        self.response += f'\nmodel: {self.model_id}'
+        self.add_response("repeat: " + str(self.repeat))
+        self.add_response("gs: " + str(self.guidance_scale))
+        self.add_response("num_inference_steps: " + str(self.num_inference_steps))
+        
+
+    def add_response(self, info):
+        self.response += "\n" + info
 
     @classmethod
     def show_all_options(cls):

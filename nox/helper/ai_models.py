@@ -2,27 +2,17 @@ from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
 import torch
 from slugify import slugify
 import subprocess
-
-
-MODEL_IDS = {
-    "oj": "prompthero/openjourney",
-    "sd1.5": "runwayml/stable-diffusion-v1-5",
-    "sd2": "stabilityai/stable-diffusion-2-1",
-    "comic": "ogkalu/Comic-Diffusion",
-    "ink": "Envvi/Inkpunk-Diffusion",
-    "samu": "Samdoesarts Ultmerge"
-}
+from ..constants import MODEL_IDS, INVOKE_CMDS
 
 
 class AiModel:
-    def __init__(self):
-        self.model_id = ""
 
-    def get_model(self, options):
-        if "models" in options:
-            self.model_id = MODEL_IDS[options["models"]]
+    def get_model(self):
+        """sets self.model depending on the prompt"""
+        if "models" in self.options and self.model_id is not None:
+            self.model_id = MODEL_IDS[self.options["models"]]
 
-            if options["models"] == "comic":
+            if self.options["models"] == "comic":
                 self.response += """
                 invoke keywords:
                 >> charliebo artstyle
@@ -34,30 +24,32 @@ class AiModel:
 
                 """
 
-            if options["models"] == "ink":
-                self.response += """
-                invoke keywords:
-                >> nvinkpunk
-
-                """ 
-
-            if options["models"] == "samu":
-                self.skip_gen = True
-                self.response += """
-                invoke keywords:
-                >> samdoesarts style
-
-                """ 
+            if self.options["models"] == "samu":
+                self.special_gen = True
 
                 
-        if self.model_id == "":
+        if self.model_id == None:
             # if no model has been chosen go for default 
             self.model_id = MODEL_IDS["oj"]
+
+        self.add_response("model: " + self.model_id)
+
+    def get_shortcut_model(self, shortcut):
+        # populate self.model_id with shortcut model
+        if shortcut in MODEL_IDS:
+            self.model_id = MODEL_IDS[shortcut]
+
+
+    def add_invoke(self):
+        """add invoke if needed"""
+        if self.model_id in INVOKE_CMDS:
+            invoke_cmd = INVOKE_CMDS[self.model_id][0]
+            self.prompt = f'{invoke_cmd} ' + self.prompt
 
 
     def gen_image(self, out_name=""):
 
-        if not self.skip_gen:
+        if not self.special_gen:
 
             image_name = out_name or slugify(self.prompt[:10])
 
@@ -74,11 +66,10 @@ class AiModel:
             return f'{image_name}.png'
 
         else:
-            if self.model_id == "Samdoesarts Ultmerge":
-               
-                cmd = ["cd /home/rashed/dev/stable-diffusion && /home/rashed/miniconda3/bin/conda run -n ldm python /home/rashed/dev/stable-diffusion/scripts/txt2img.py --ckpt /home/rashed/dev/nox/models/samdoesartsUltmerge_v1.ckpt --prompt \"{}\" --plms --outdir \"/home/rashed/dev/nox/output\"".format(self.prompt)]
-                process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-                output, error = process.communicate()
+            prepare_cmd = "cd /home/rashed/dev/stable-diffusion && /home/rashed/miniconda3/bin/conda run -n ldm python /home/rashed/dev/stable-diffusion/scripts/txt2img.py --ckpt /home/rashed/dev/nox/models/"
+            cmd = ["{}{} --prompt \"{}\" --plms --outdir \"/home/rashed/dev/nox/output\"".format(prepare_cmd, self.model_id,self.prompt)]
+            process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            output, error = process.communicate()
             return 'output/grid-0000.png'
 
 

@@ -2,6 +2,7 @@ import logging
 from os import environ as env
 import os
 import telebot
+import nox.utils as utils
 
 from nox.txt2img import Txt2img
 
@@ -14,6 +15,18 @@ bot = telebot.TeleBot(env["NOX_BOT_KEY"])
 def show_commands(message):
 	bot.reply_to(message, Txt2img.show_all_options())
 
+@bot.message_handler(commands=['ink'])
+def draw_ink(message):
+    utils.draw_with_command(bot, message, "ink")
+
+@bot.message_handler(commands=['comic'])
+def draw_comic(message):
+    utils.draw_with_command(bot, message, "comic")
+
+@bot.message_handler(commands=['samu'])
+def draw_samu(message):
+    utils.draw_with_command(bot, message, "samu")
+
 @bot.message_handler(commands=['models'])
 def show_ai_models(message):
 	bot.reply_to(message, Txt2img.show_ai_models())
@@ -22,37 +35,17 @@ def show_ai_models(message):
 @bot.message_handler(func=lambda message: True)
 def draw(message):
 
-    txt2img = Txt2img(message.text)
+    utils.draw_with_command(bot, message)
 
-    txt2img.update_response()
-    bot.send_message(message.chat.id,
-                     f'{txt2img.response}')
+    # if txt2img.all_details:
+    #     for i in ["high", "alpha", "beta", "gamma"]:
+    #         prompt = message.text + " detailed:" + i
+    #         txt2img = Txt2img(prompt)
+    #         photo_file = txt2img.gen_image()
+    #         photo = open(photo_file, "rb")
 
-    # send uploading
-    bot.send_chat_action(message.chat.id, "upload_photo")
-
-    for i in range(txt2img.repeat):
-        photo_file = txt2img.gen_image()
-        if photo_file is not None:
-            photo = open(photo_file, "rb")
-
-            bot.send_photo(message.chat.id,
-                            photo=photo)
-            
-            try:
-                os.remove(photo_file) 
-            except:
-                pass
-
-    if txt2img.all_details:
-        for i in ["high", "alpha", "beta", "gamma"]:
-            prompt = message.text + " detailed:" + i
-            txt2img = Txt2img(prompt)
-            photo_file = txt2img.gen_image()
-            photo = open(photo_file, "rb")
-
-            bot.send_photo(message.chat.id,
-                                photo=photo)
+    #         bot.send_photo(message.chat.id,
+    #                             photo=photo)
           
 
 
